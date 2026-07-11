@@ -19,7 +19,7 @@ VSVersionInfo(
         StringStruct('FileDescription', 'Wilt Clicker - Advanced Autoclicker'),
         StringStruct('FileVersion', '1.0.0'),
         StringStruct('InternalName', 'WiltClicker'),
-        StringStruct('LegalCopyright', 'Copyright (c) 2026 Wither'),
+        StringStruct('LegalCopyright', 'Copyright (c) 2026 Wither. Licensed under GPLv3.'),
         StringStruct('OriginalFilename', 'WiltClicker.exe'),
         StringStruct('ProductName', 'Wilt Clicker'),
         StringStruct('ProductVersion', '1.0.0')])

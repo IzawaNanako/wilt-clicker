@@ -1,7 +1,7 @@
 [project]
-name = "extreme-clicker"
+name = "wilt-clicker"
 version = "0.1.0"
-description = "A high-performance Windows autoclicker built with Python"
+description = "A highly customizable, Windows-exclusive autoclicker built with Python and CustomTkinter."
 requires-python = ">=3.10"
 dependencies = [
     "customtkinter>=6.0.0",

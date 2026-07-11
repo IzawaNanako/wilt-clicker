@@ -462,6 +462,8 @@ class AutoclickerApp(ctk.CTk):
 		for t_name in ["humanize", "jitter", "move_drop", "lock", "limit_count", "limit_time"]:
 			self.hotkeys.bind_toggle(t_name, self.bound_keys[t_name], mapping[t_name])
 
+		self.save_config()
+
 	def _toggle_var(self, var: ctk.BooleanVar):
 		var.set(not var.get())
 		self._update_settings()

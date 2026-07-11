@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+Thumbs.db
+.DS_Store
+.ruff_cache/
+.vscode/
+.idea/
+.venv/
+dist/
+build/
+wilt-clicker-config.json

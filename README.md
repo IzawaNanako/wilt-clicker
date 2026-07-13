@@ -4,7 +4,7 @@ A highly customizable, Windows-exclusive autoclicker built with Python and Custo
 
 ## Description
 
-Wilt Clicker is an advanced automation tool designed to handle repetitive clicking tasks while offering features to simulate realistic inputs. Originally conceived with the fun idea of preventing users from "wilting" during tedious and repetitive computer tasks. It supports advanced features like CPS humanization and movement-based drop-offs to bypass basic macro detection or simply simulate natural behavior. 
+Wilt Clicker is an advanced automation tool designed to handle repetitive clicking tasks while offering features to simulate realistic inputs. Originally conceived with the fun idea of preventing users from "wilting" during tedious and repetitive computer tasks. It supports advanced features like CPS humanization and movement-based drop-offs to bypass basic macro detection or simply simulate natural behavior.
 
 ## Features
 
@@ -38,9 +38,10 @@ You can run Wilt Clicker either by downloading the pre-compiled executable or by
 2. Download the latest `.exe` file.
 3. Double-click to run the application.
 
-> **Important Notes on the Executable:** 
-> * **Administrator Privileges:** Depending on the target application or game, you may need to right-click the `.exe` and select "Run as Administrator" for the simulated clicks to register properly.
-> * **Antivirus Detection:** Because this tool intercepts keystrokes for hotkeys and simulates global mouse inputs, Windows Defender or other antivirus software may falsely flag the executable as suspicious. This is a common false positive for compiled Python automation tools.
+> **Important Notes on the Executable:**
+>
+> - **Administrator Privileges:** Depending on the target application or game, you may need to right-click the `.exe` and select "Run as Administrator" for the simulated clicks to register properly.
+> - **Antivirus Detection:** Because this tool intercepts keystrokes for hotkeys and simulates global mouse inputs, Windows Defender or other antivirus software may falsely flag the executable as suspicious. This is a common false positive for compiled Python automation tools.
 
 #### Option 2: Running from Source
 

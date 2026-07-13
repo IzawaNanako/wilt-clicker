@@ -6,7 +6,7 @@ from engine.win32 import get_cursor_pos, send_click, set_cursor_pos
 
 
 class WiltClicker:
-	def __init__(self):
+	def __init__(self) -> None:
 		self.is_running = False
 		self.cps = 10.0
 		self.button = "left"
@@ -18,7 +18,7 @@ class WiltClicker:
 
 		self.use_count_limit = False
 		self.use_time_limit = False
-		self.click_limit = 0
+		self.count_limit = 0
 		self.time_limit = 0.0
 		self.start_time = 0.0
 
@@ -27,7 +27,8 @@ class WiltClicker:
 		self.hum_min = 0.8
 		self.hum_max = 1.2
 		self.drop_pct = 0.4
-		self.click_limit = 0
+
+		self.master_switch = True
 
 		self._thread: threading.Thread | None = None
 
@@ -45,10 +46,11 @@ class WiltClicker:
 		hum_max: float,
 		drop_pct: float,
 		use_count_limit: bool,
-		click_limit: int,
+		count_limit: int,
 		use_time_limit: bool,
 		time_limit: float,
-	):
+		master_switch: bool,
+	) -> None:
 		self.cps = cps
 		self.button = button
 		self.humanize = humanize
@@ -61,11 +63,12 @@ class WiltClicker:
 		self.hum_max = hum_max
 		self.drop_pct = drop_pct
 		self.use_count_limit = use_count_limit
-		self.click_limit = click_limit
+		self.count_limit = count_limit
 		self.use_time_limit = use_time_limit
 		self.time_limit = time_limit
+		self.master_switch = master_switch
 
-	def start(self):
+	def start(self) -> None:
 		if self.is_running:
 			return
 		self.is_running = True
@@ -73,12 +76,12 @@ class WiltClicker:
 		self._thread = new_thread
 		new_thread.start()
 
-	def stop(self):
+	def stop(self) -> None:
 		self.is_running = False
 		if self._thread and self._thread.is_alive():
 			self._thread.join(timeout=0.1)
 
-	def _click_loop(self):
+	def _click_loop(self) -> None:
 		delay = 1.0 / self.cps
 		next_click = time.perf_counter() + delay
 		last_pos = get_cursor_pos()
@@ -91,7 +94,7 @@ class WiltClicker:
 					self.stop()
 					break
 
-				if self.use_count_limit and clicks_done >= self.click_limit:
+				if self.use_count_limit and clicks_done >= self.count_limit:
 					self.stop()
 					break
 

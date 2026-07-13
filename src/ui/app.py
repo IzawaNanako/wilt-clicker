@@ -20,8 +20,6 @@ SetCurrentProcessExplicitAppUserModelID = getattr(user32, "SetCurrentProcessExpl
 SetCurrentProcessExplicitAppUserModelID.argtypes = [ctypes.c_wchar_p]
 SetCurrentProcessExplicitAppUserModelID.restype = None
 
-ctk.set_window_scaling(1.1)
-ctk.set_widget_scaling(1.1)
 
 
 def resource_path(relative_path: str) -> str:
@@ -71,8 +69,8 @@ class AutoclickerApp(ctk.CTk):
 			"jitter": "",
 			"move_drop": "",
 			"lock": "",
-			"limit_count": "",
-			"limit_time": "",
+			"count_limit": "",
+			"time_limit": "",
 			"master_switch": "",
 			"minimize_tray": "",
 		}
@@ -162,7 +160,7 @@ class AutoclickerApp(ctk.CTk):
 		).grid(row=0, column=0, sticky="w", pady=(5, 10), padx=20)
 
 		coord_frame = ctk.CTkFrame(toggles_frame, fg_color="transparent")
-		coord_frame.grid(row=0, column=1, sticky="w", pady=(5, 10), padx=20)
+		coord_frame.grid(row=0, column=1, sticky="ew", pady=(5, 10), padx=20)  # <-- Added sticky="ew"
 
 		ctk.CTkLabel(coord_frame, text="X:", font=("Inter", 14)).pack(side="left")
 		self.x_entry = ctk.CTkEntry(coord_frame, width=60, justify="center", font=("Inter", 14))
@@ -173,13 +171,13 @@ class AutoclickerApp(ctk.CTk):
 		ctk.CTkLabel(coord_frame, text="Y:", font=("Inter", 14)).pack(side="left")
 		self.y_entry = ctk.CTkEntry(coord_frame, width=60, justify="center", font=("Inter", 14))
 		self.y_entry.insert(0, "0")
-		self.y_entry.pack(side="left", padx=(5, 30))  # Extra space added here!
+		self.y_entry.pack(side="left", padx=5)  # <-- Removed the weird hardcoded space!
 		self.y_entry.bind("<KeyRelease>", lambda event: self._update_settings())
 
 		self.capture_btn = ctk.CTkButton(
 			coord_frame, text="Capture Overlay", width=120, font=("Inter", 13, "bold"), command=self._capture_mode
 		)
-		self.capture_btn.pack(side="left")
+		self.capture_btn.pack(side="right")
 
 		self.humanize_var = ctk.BooleanVar(value=False)
 		ctk.CTkCheckBox(
@@ -228,13 +226,13 @@ class AutoclickerApp(ctk.CTk):
 			command=self._on_limit_toggle,
 			font=("Inter", 14),
 		).pack(side="left")
-		self.limit_count_entry = ctk.CTkEntry(count_frame, width=60, justify="center", font=("Inter", 14))
-		self.limit_count_entry.insert(0, "100")
-		self.limit_count_entry.pack(side="left", padx=10)
-		self.limit_count_entry.bind("<KeyRelease>", lambda event: self._update_settings())
+		self.count_limit_entry = ctk.CTkEntry(count_frame, width=60, justify="center", font=("Inter", 14))
+		self.count_limit_entry.insert(0, "100")
+		self.count_limit_entry.pack(side="left", padx=10)
+		self.count_limit_entry.bind("<KeyRelease>", lambda event: self._update_settings())
 
 		time_frame = ctk.CTkFrame(toggles_frame, fg_color="transparent")
-		time_frame.grid(row=3, column=1, sticky="w", pady=8, padx=20)
+		time_frame.grid(row=3, column=1, sticky="ew", pady=8, padx=20)  # <-- Added sticky="ew"
 
 		self.use_time_limit_var = ctk.BooleanVar(value=False)
 		ctk.CTkCheckBox(
@@ -244,10 +242,10 @@ class AutoclickerApp(ctk.CTk):
 			command=self._on_limit_toggle,
 			font=("Inter", 14),
 		).pack(side="left")
-		self.limit_time_entry = ctk.CTkEntry(time_frame, width=60, justify="center", font=("Inter", 14))
-		self.limit_time_entry.insert(0, "10")
-		self.limit_time_entry.pack(side="left", padx=10)
-		self.limit_time_entry.bind("<KeyRelease>", lambda event: self._update_settings())
+		self.time_limit_entry = ctk.CTkEntry(time_frame, width=60, justify="center", font=("Inter", 14))
+		self.time_limit_entry.insert(0, "10")
+		self.time_limit_entry.pack(side="right")
+		self.time_limit_entry.bind("<KeyRelease>", lambda event: self._update_settings())
 
 		bottom_actions = ctk.CTkFrame(self.tab_main, fg_color="transparent")
 		bottom_actions.pack(side="bottom", pady=(5, 10))
@@ -401,8 +399,8 @@ class AutoclickerApp(ctk.CTk):
 		create_bind_cell("jitter", "Toggle Jitter", 0, 1)
 		create_bind_cell("move_drop", "Toggle Move Drop", 1, 0)
 		create_bind_cell("lock", "Toggle Coords Lock", 1, 1)
-		create_bind_cell("limit_count", "Toggle Click Limit", 2, 0)
-		create_bind_cell("limit_time", "Toggle Time Limit", 2, 1)
+		create_bind_cell("count_limit", "Toggle Click Limit", 2, 0)
+		create_bind_cell("time_limit", "Toggle Time Limit", 2, 1)
 		create_bind_cell("master_switch", "Toggle Master Switch", 3, 0)
 		create_bind_cell("minimize_tray", "Minimize to Tray", 3, 1)
 
@@ -446,7 +444,7 @@ class AutoclickerApp(ctk.CTk):
 		esc_k = self.bound_keys["escape"]
 		toggle_keys = [
 			self.bound_keys[k]
-			for k in ["humanize", "jitter", "move_drop", "lock", "limit_count", "limit_time"]
+			for k in ["humanize", "jitter", "move_drop", "lock", "count_limit", "time_limit", "master_switch"]
 			if self.bound_keys[k]
 		]
 
@@ -478,9 +476,9 @@ class AutoclickerApp(ctk.CTk):
 		hum_max = self._safe_float(self.hum_max_entry, 120.0) / 100.0
 		drop_pct = self._safe_float(self.drop_entry, 60.0) / 100.0
 		use_count_limit = self.use_count_limit_var.get()
-		count_limit = int(self._safe_float(self.limit_count_entry, 0.0))
+		count_limit = int(self._safe_float(self.count_limit_entry, 0.0))
 		use_time_limit = self.use_time_limit_var.get()
-		time_limit = self._safe_float(self.limit_time_entry, 0.0)
+		time_limit = self._safe_float(self.time_limit_entry, 0.0)
 		master_switch = self.master_switch_var.get()
 
 		self.engine.update_settings(
@@ -510,8 +508,8 @@ class AutoclickerApp(ctk.CTk):
 			"jitter": lambda: self._toggle_var(self.jitter_var),
 			"move_drop": lambda: self._toggle_var(self.move_drop_var),
 			"lock": lambda: self._toggle_var(self.lock_coords_var),
-			"limit_count": lambda: self._toggle_exclusive("count"),
-			"limit_time": lambda: self._toggle_exclusive("time"),
+			"count_limit": lambda: self._toggle_exclusive("count"),
+			"time_limit": lambda: self._toggle_exclusive("time"),
 			"master_switch": lambda: self._toggle_var(self.master_switch_var),
 			"minimize_tray": self._minimize_to_tray,
 		}
@@ -520,8 +518,8 @@ class AutoclickerApp(ctk.CTk):
 			"jitter",
 			"move_drop",
 			"lock",
-			"limit_count",
-			"limit_time",
+			"count_limit",
+			"time_limit",
 			"master_switch",
 			"minimize_tray",
 		]:
@@ -611,9 +609,9 @@ class AutoclickerApp(ctk.CTk):
 			"move_drop": self.move_drop_var.get(),
 			"strict_hotkey": self.strict_hotkey_var.get(),
 			"use_count": self.use_count_limit_var.get(),
-			"count_limit": self.limit_count_entry.get(),
+			"count_limit": self.count_limit_entry.get(),
 			"use_time": self.use_time_limit_var.get(),
-			"time_limit": self.limit_time_entry.get(),
+			"time_limit": self.time_limit_entry.get(),
 			"hum_min": self.hum_min_entry.get(),
 			"hum_max": self.hum_max_entry.get(),
 			"drop_pct": self.drop_entry.get(),
@@ -653,9 +651,9 @@ class AutoclickerApp(ctk.CTk):
 			self.strict_hotkey_var.set(config.get("strict_hotkey", False))
 
 			self.use_count_limit_var.set(config.get("use_count", False))
-			set_entry(self.limit_count_entry, config.get("count_limit", "100"))
+			set_entry(self.count_limit_entry, config.get("count_limit", "100"))
 			self.use_time_limit_var.set(config.get("use_time", False))
-			set_entry(self.limit_time_entry, config.get("time_limit", "10"))
+			set_entry(self.time_limit_entry, config.get("time_limit", "10"))
 
 			set_entry(self.hum_min_entry, config.get("hum_min", "80"))
 			set_entry(self.hum_max_entry, config.get("hum_max", "120"))

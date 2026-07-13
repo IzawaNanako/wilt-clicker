@@ -1,21 +1,30 @@
+import ctypes
 import json
 import os
 import sys
 import threading
+import warnings
 from pathlib import Path
+from typing import Protocol
 
 import customtkinter as ctk
 import keyboard
+import pystray
+from PIL import Image
 
 from engine.clicker import WiltClicker
 from engine.hotkeys import HotkeyManager
+
+user32 = ctypes.windll.shell32
+SetCurrentProcessExplicitAppUserModelID = getattr(user32, "SetCurrentProcessExplicitAppUserModelID")
+SetCurrentProcessExplicitAppUserModelID.argtypes = [ctypes.c_wchar_p]
+SetCurrentProcessExplicitAppUserModelID.restype = None
 
 ctk.set_window_scaling(1.1)
 ctk.set_widget_scaling(1.1)
 
 
 def resource_path(relative_path: str) -> str:
-	"""Get absolute path to resource, works for dev and for PyInstaller"""
 	base_path = getattr(sys, "_MEIPASS", None)
 
 	if isinstance(base_path, str):
@@ -23,6 +32,10 @@ def resource_path(relative_path: str) -> str:
 
 	dev_path = Path(__file__).resolve().parent.parent.parent
 	return str(dev_path / relative_path)
+
+
+class TrayIcon(Protocol):
+	def stop(self) -> None: ...
 
 
 class AutoclickerApp(ctk.CTk):
@@ -33,11 +46,18 @@ class AutoclickerApp(ctk.CTk):
 	strict_hotkey_var: ctk.BooleanVar
 	button_var: ctk.StringVar
 	mode_var: ctk.StringVar
+	master_switch_var: ctk.BooleanVar
 
-	def __init__(self):
+	def __init__(self) -> None:
 		super().__init__()
 		self.title("Wilt Clicker")
 		self.geometry("750x450")
+		try:
+			app_id: str = "wither.wiltclicker.main.1.0"
+			SetCurrentProcessExplicitAppUserModelID(app_id)
+			self.iconbitmap(resource_path("icon.ico"))
+		except (AttributeError, OSError):
+			pass
 		self.minsize(700, 400)
 		ctk.set_appearance_mode("dark")
 
@@ -53,6 +73,8 @@ class AutoclickerApp(ctk.CTk):
 			"lock": "",
 			"limit_count": "",
 			"limit_time": "",
+			"master_switch": "",
+			"minimize_tray": "",
 		}
 		self.status_error = ""
 
@@ -67,7 +89,7 @@ class AutoclickerApp(ctk.CTk):
 
 		self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
-	def _build_ui(self):
+	def _build_ui(self) -> None:
 		self.title_label = ctk.CTkLabel(self, text="Wilt Clicker", font=("Inter", 24, "bold"))
 		self.title_label.pack(pady=(15, 5))
 
@@ -87,7 +109,7 @@ class AutoclickerApp(ctk.CTk):
 
 		self._update_ui_loop()
 
-	def _build_main_tab(self):
+	def _build_main_tab(self) -> None:
 		ctrl_frame = ctk.CTkFrame(self.tab_main, fg_color="transparent")
 		ctrl_frame.pack(fill="x", pady=(10, 5), padx=20)
 		inner_ctrl = ctk.CTkFrame(ctrl_frame, fg_color="transparent")
@@ -125,41 +147,39 @@ class AutoclickerApp(ctk.CTk):
 			font=("Inter", 13),
 		).pack(side="left", padx=10)
 
-		target_frame = ctk.CTkFrame(self.tab_main, fg_color="#2b2b2b", corner_radius=8)
-		target_frame.pack(fill="x", pady=10, padx=20)
-		inner_target = ctk.CTkFrame(target_frame, fg_color="transparent")
-		inner_target.pack(pady=10, expand=True)
+		toggles_wrapper = ctk.CTkFrame(self.tab_main, fg_color="transparent")
+		toggles_wrapper.pack(fill="both", expand=True, pady=10)
+		toggles_frame = ctk.CTkFrame(toggles_wrapper, fg_color="transparent")
+		toggles_frame.pack(expand=True)
 
 		self.lock_coords_var = ctk.BooleanVar(value=False)
 		ctk.CTkCheckBox(
-			inner_target,
+			toggles_frame,
 			text="Lock Coords",
 			variable=self.lock_coords_var,
 			command=self._update_settings,
 			font=("Inter", 14, "bold"),
-		).pack(side="left", padx=(0, 15))
+		).grid(row=0, column=0, sticky="w", pady=(5, 10), padx=20)
 
-		ctk.CTkLabel(inner_target, text="X:", font=("Inter", 14)).pack(side="left")
-		self.x_entry = ctk.CTkEntry(inner_target, width=60, justify="center", font=("Inter", 14))
+		coord_frame = ctk.CTkFrame(toggles_frame, fg_color="transparent")
+		coord_frame.grid(row=0, column=1, sticky="w", pady=(5, 10), padx=20)
+
+		ctk.CTkLabel(coord_frame, text="X:", font=("Inter", 14)).pack(side="left")
+		self.x_entry = ctk.CTkEntry(coord_frame, width=60, justify="center", font=("Inter", 14))
 		self.x_entry.insert(0, "0")
 		self.x_entry.pack(side="left", padx=(5, 10))
 		self.x_entry.bind("<KeyRelease>", lambda event: self._update_settings())
 
-		ctk.CTkLabel(inner_target, text="Y:", font=("Inter", 14)).pack(side="left")
-		self.y_entry = ctk.CTkEntry(inner_target, width=60, justify="center", font=("Inter", 14))
+		ctk.CTkLabel(coord_frame, text="Y:", font=("Inter", 14)).pack(side="left")
+		self.y_entry = ctk.CTkEntry(coord_frame, width=60, justify="center", font=("Inter", 14))
 		self.y_entry.insert(0, "0")
-		self.y_entry.pack(side="left", padx=(5, 20))
+		self.y_entry.pack(side="left", padx=(5, 30))  # Extra space added here!
 		self.y_entry.bind("<KeyRelease>", lambda event: self._update_settings())
 
 		self.capture_btn = ctk.CTkButton(
-			inner_target, text="Capture Overlay", width=120, font=("Inter", 13, "bold"), command=self._capture_mode
+			coord_frame, text="Capture Overlay", width=120, font=("Inter", 13, "bold"), command=self._capture_mode
 		)
 		self.capture_btn.pack(side="left")
-
-		toggles_wrapper = ctk.CTkFrame(self.tab_main, fg_color="transparent")
-		toggles_wrapper.pack(fill="x", pady=5)
-		toggles_frame = ctk.CTkFrame(toggles_wrapper, fg_color="transparent")
-		toggles_frame.pack(expand=True)
 
 		self.humanize_var = ctk.BooleanVar(value=False)
 		ctk.CTkCheckBox(
@@ -168,7 +188,7 @@ class AutoclickerApp(ctk.CTk):
 			variable=self.humanize_var,
 			command=self._update_settings,
 			font=("Inter", 14),
-		).grid(row=0, column=0, sticky="w", pady=8, padx=20)
+		).grid(row=1, column=0, sticky="w", pady=8, padx=20)
 
 		self.jitter_var = ctk.BooleanVar(value=False)
 		ctk.CTkCheckBox(
@@ -177,7 +197,7 @@ class AutoclickerApp(ctk.CTk):
 			variable=self.jitter_var,
 			command=self._update_settings,
 			font=("Inter", 14),
-		).grid(row=0, column=1, sticky="w", pady=8, padx=20)
+		).grid(row=1, column=1, sticky="w", pady=8, padx=20)
 
 		self.move_drop_var = ctk.BooleanVar(value=False)
 		ctk.CTkCheckBox(
@@ -186,7 +206,7 @@ class AutoclickerApp(ctk.CTk):
 			variable=self.move_drop_var,
 			command=self._update_settings,
 			font=("Inter", 14),
-		).grid(row=1, column=0, sticky="w", pady=8, padx=20)
+		).grid(row=2, column=0, sticky="w", pady=8, padx=20)
 
 		self.strict_hotkey_var = ctk.BooleanVar(value=False)
 		ctk.CTkCheckBox(
@@ -195,16 +215,16 @@ class AutoclickerApp(ctk.CTk):
 			variable=self.strict_hotkey_var,
 			command=self._update_settings,
 			font=("Inter", 14),
-		).grid(row=1, column=1, sticky="w", pady=8, padx=20)
+		).grid(row=2, column=1, sticky="w", pady=8, padx=20)
 
 		count_frame = ctk.CTkFrame(toggles_frame, fg_color="transparent")
-		count_frame.grid(row=2, column=0, sticky="w", pady=8, padx=20)
+		count_frame.grid(row=3, column=0, sticky="w", pady=8, padx=20)
 
-		self.use_count_var = ctk.BooleanVar(value=False)
+		self.use_count_limit_var = ctk.BooleanVar(value=False)
 		ctk.CTkCheckBox(
 			count_frame,
 			text="Click To:",
-			variable=self.use_count_var,
+			variable=self.use_count_limit_var,
 			command=self._on_limit_toggle,
 			font=("Inter", 14),
 		).pack(side="left")
@@ -214,13 +234,13 @@ class AutoclickerApp(ctk.CTk):
 		self.limit_count_entry.bind("<KeyRelease>", lambda event: self._update_settings())
 
 		time_frame = ctk.CTkFrame(toggles_frame, fg_color="transparent")
-		time_frame.grid(row=2, column=1, sticky="w", pady=8, padx=20)
+		time_frame.grid(row=3, column=1, sticky="w", pady=8, padx=20)
 
-		self.use_time_var = ctk.BooleanVar(value=False)
+		self.use_time_limit_var = ctk.BooleanVar(value=False)
 		ctk.CTkCheckBox(
 			time_frame,
 			text="Click For (Secs):",
-			variable=self.use_time_var,
+			variable=self.use_time_limit_var,
 			command=self._on_limit_toggle,
 			font=("Inter", 14),
 		).pack(side="left")
@@ -229,7 +249,28 @@ class AutoclickerApp(ctk.CTk):
 		self.limit_time_entry.pack(side="left", padx=10)
 		self.limit_time_entry.bind("<KeyRelease>", lambda event: self._update_settings())
 
-	def _on_cps_change(self, _event: object):
+		bottom_actions = ctk.CTkFrame(self.tab_main, fg_color="transparent")
+		bottom_actions.pack(side="bottom", pady=(5, 10))
+
+		self.master_switch_var = ctk.BooleanVar(value=True)
+		ctk.CTkSwitch(
+			bottom_actions,
+			text="Master Switch",
+			variable=self.master_switch_var,
+			command=self._update_settings,
+			font=("Inter", 14, "bold"),
+		).pack(side="left", padx=20)
+
+		ctk.CTkButton(
+			bottom_actions,
+			text="Minimize to Tray",
+			font=("Inter", 13, "bold"),
+			command=self._minimize_to_tray,
+			fg_color="#4a4a4a",
+			hover_color="#3a3a3a",
+		).pack(side="left", padx=20)
+
+	def _on_cps_change(self, _event: object) -> None:
 		"""Fires when the user types in the CPS box, updates the Delay box."""
 		try:
 			cps = float(self.cps_entry.get())
@@ -241,7 +282,7 @@ class AutoclickerApp(ctk.CTk):
 			pass
 		self._update_settings()
 
-	def _on_delay_change(self, _event: object):
+	def _on_delay_change(self, _event: object) -> None:
 		"""Fires when the user types in the Delay box, updates the CPS box."""
 		try:
 			delay = float(self.delay_entry.get())
@@ -253,14 +294,14 @@ class AutoclickerApp(ctk.CTk):
 			pass
 		self._update_settings()
 
-	def _on_limit_toggle(self):
-		if self.use_count_var.get():
-			self.use_time_var.set(False)
-		elif self.use_time_var.get():
-			self.use_count_var.set(False)
+	def _on_limit_toggle(self) -> None:
+		if self.use_count_limit_var.get():
+			self.use_time_limit_var.set(False)
+		elif self.use_time_limit_var.get():
+			self.use_count_limit_var.set(False)
 		self._update_settings()
 
-	def _build_advanced_tab(self):
+	def _build_advanced_tab(self) -> None:
 		adv_wrapper = ctk.CTkFrame(self.tab_adv, fg_color="transparent")
 		adv_wrapper.pack(fill="both", expand=True)
 
@@ -305,7 +346,7 @@ class AutoclickerApp(ctk.CTk):
 		self.drop_entry.pack(side="left")
 		self.drop_entry.bind("<KeyRelease>", lambda event: self._update_settings())
 
-	def _build_hotkeys_tab(self):
+	def _build_hotkeys_tab(self) -> None:
 		ctk.CTkLabel(
 			self.tab_hotkeys,
 			text="Click a button, then press a key. (ESC to Unbind)",
@@ -340,7 +381,7 @@ class AutoclickerApp(ctk.CTk):
 		grid_frame = ctk.CTkFrame(grid_wrapper, fg_color="transparent")
 		grid_frame.pack(expand=True)
 
-		def create_bind_cell(name: str, label_text: str, row_idx: int, col_idx: int):
+		def create_bind_cell(name: str, label_text: str, row_idx: int, col_idx: int) -> None:
 			cell = ctk.CTkFrame(grid_frame, fg_color="transparent")
 			cell.grid(row=row_idx, column=col_idx, sticky="ew", padx=30, pady=5)
 			ctk.CTkLabel(cell, text=label_text, width=150, anchor="w", font=("Inter", 14)).pack(side="left")
@@ -362,6 +403,8 @@ class AutoclickerApp(ctk.CTk):
 		create_bind_cell("lock", "Toggle Coords Lock", 1, 1)
 		create_bind_cell("limit_count", "Toggle Click Limit", 2, 0)
 		create_bind_cell("limit_time", "Toggle Time Limit", 2, 1)
+		create_bind_cell("master_switch", "Toggle Master Switch", 3, 0)
+		create_bind_cell("minimize_tray", "Minimize to Tray", 3, 1)
 
 		exit_row = ctk.CTkFrame(self.tab_hotkeys, fg_color="#3a2525", corner_radius=8)
 		exit_row.pack(fill="x", padx=35, pady=(10, 20))
@@ -396,7 +439,9 @@ class AutoclickerApp(ctk.CTk):
 		except ValueError:
 			return default
 
-	def _update_settings(self):
+	def _update_settings(self) -> None:
+		self.hotkeys.master_switch = self.master_switch_var.get()
+
 		main_k = self.bound_keys["main"]
 		esc_k = self.bound_keys["escape"]
 		toggle_keys = [
@@ -422,30 +467,39 @@ class AutoclickerApp(ctk.CTk):
 		self.hotkeys.set_error_state(False)
 
 		cps = self._safe_float(self.cps_entry, 10.0)
+		button = self.button_var.get().lower()
+		humanize = self.humanize_var.get()
+		jitter = self.jitter_var.get()
+		move_drop = self.move_drop_var.get()
+		lock_coords = self.lock_coords_var.get()
 		tx = int(self._safe_float(self.x_entry, 0.0))
 		ty = int(self._safe_float(self.y_entry, 0.0))
 		hum_min = self._safe_float(self.hum_min_entry, 80.0) / 100.0
 		hum_max = self._safe_float(self.hum_max_entry, 120.0) / 100.0
 		drop_pct = self._safe_float(self.drop_entry, 60.0) / 100.0
-		click_limit = int(self._safe_float(self.limit_count_entry, 0.0))
+		use_count_limit = self.use_count_limit_var.get()
+		count_limit = int(self._safe_float(self.limit_count_entry, 0.0))
+		use_time_limit = self.use_time_limit_var.get()
 		time_limit = self._safe_float(self.limit_time_entry, 0.0)
+		master_switch = self.master_switch_var.get()
 
 		self.engine.update_settings(
-			cps,
-			self.button_var.get().lower(),
-			self.humanize_var.get(),
-			self.jitter_var.get(),
-			self.move_drop_var.get(),
-			self.lock_coords_var.get(),
-			tx,
-			ty,
-			hum_min,
-			hum_max,
-			drop_pct,
-			self.use_count_var.get(),
-			click_limit,
-			self.use_time_var.get(),
-			time_limit,
+			cps=cps,
+			button=button,
+			humanize=humanize,
+			jitter=jitter,
+			move_drop=move_drop,
+			lock_coords=lock_coords,
+			tx=tx,
+			ty=ty,
+			hum_min=hum_min,
+			hum_max=hum_max,
+			drop_pct=drop_pct,
+			use_count_limit=use_count_limit,
+			count_limit=count_limit,
+			use_time_limit=use_time_limit,
+			time_limit=time_limit,
+			master_switch=master_switch,
 		)
 
 		self.hotkeys.update_main_settings(main_k, self.mode_var.get().lower(), self.strict_hotkey_var.get())
@@ -458,28 +512,39 @@ class AutoclickerApp(ctk.CTk):
 			"lock": lambda: self._toggle_var(self.lock_coords_var),
 			"limit_count": lambda: self._toggle_exclusive("count"),
 			"limit_time": lambda: self._toggle_exclusive("time"),
+			"master_switch": lambda: self._toggle_var(self.master_switch_var),
+			"minimize_tray": self._minimize_to_tray,
 		}
-		for t_name in ["humanize", "jitter", "move_drop", "lock", "limit_count", "limit_time"]:
+		for t_name in [
+			"humanize",
+			"jitter",
+			"move_drop",
+			"lock",
+			"limit_count",
+			"limit_time",
+			"master_switch",
+			"minimize_tray",
+		]:
 			self.hotkeys.bind_toggle(t_name, self.bound_keys[t_name], mapping[t_name])
 
 		self.save_config()
 
-	def _toggle_var(self, var: ctk.BooleanVar):
+	def _toggle_var(self, var: ctk.BooleanVar) -> None:
 		var.set(not var.get())
 		self._update_settings()
 
-	def _toggle_exclusive(self, mode: str):
+	def _toggle_exclusive(self, mode: str) -> None:
 		if mode == "count":
-			self.use_count_var.set(not self.use_count_var.get())
-			if self.use_count_var.get():
-				self.use_time_var.set(False)
+			self.use_count_limit_var.set(not self.use_count_limit_var.get())
+			if self.use_count_limit_var.get():
+				self.use_time_limit_var.set(False)
 		else:
-			self.use_time_var.set(not self.use_time_var.get())
-			if self.use_time_var.get():
-				self.use_count_var.set(False)
+			self.use_time_limit_var.set(not self.use_time_limit_var.get())
+			if self.use_time_limit_var.get():
+				self.use_count_limit_var.set(False)
 		self._update_settings()
 
-	def _listen_for_hotkey(self, bind_name: str):
+	def _listen_for_hotkey(self, bind_name: str) -> None:
 		btn = self.hotkey_btns[bind_name]
 		btn.configure(text="Listening...", fg_color="#a83232")
 
@@ -503,7 +568,7 @@ class AutoclickerApp(ctk.CTk):
 
 		threading.Thread(target=listener, daemon=True).start()
 
-	def _capture_mode(self):
+	def _capture_mode(self) -> None:
 		self.capture_btn.configure(text="Click Screen (ESC Cancel)", fg_color="#a83232")
 
 		overlay = ctk.CTkToplevel(self)
@@ -513,7 +578,7 @@ class AutoclickerApp(ctk.CTk):
 		overlay.configure(cursor="crosshair")
 		overlay.focus_force()
 
-		def on_click(event: object):
+		def on_click(event: object) -> None:
 			x, y = getattr(event, "x_root", 0), getattr(event, "y_root", 0)
 
 			self.x_entry.delete(0, "end")
@@ -525,14 +590,14 @@ class AutoclickerApp(ctk.CTk):
 			self._update_settings()
 			overlay.destroy()
 
-		def on_cancel(_event: object):
+		def on_cancel(_event: object) -> None:
 			self.capture_btn.configure(text="Capture Overlay", fg_color="#600080")
 			overlay.destroy()
 
 		overlay.bind("<Button-1>", on_click)
 		overlay.bind("<Escape>", on_cancel)
 
-	def save_config(self):
+	def save_config(self) -> None:
 		"""Gathers all current UI states and saves them to a JSON file."""
 		config_data = {
 			"cps": self.cps_entry.get(),
@@ -545,13 +610,14 @@ class AutoclickerApp(ctk.CTk):
 			"jitter": self.jitter_var.get(),
 			"move_drop": self.move_drop_var.get(),
 			"strict_hotkey": self.strict_hotkey_var.get(),
-			"use_count": self.use_count_var.get(),
-			"click_limit": self.limit_count_entry.get(),
-			"use_time": self.use_time_var.get(),
+			"use_count": self.use_count_limit_var.get(),
+			"count_limit": self.limit_count_entry.get(),
+			"use_time": self.use_time_limit_var.get(),
 			"time_limit": self.limit_time_entry.get(),
 			"hum_min": self.hum_min_entry.get(),
 			"hum_max": self.hum_max_entry.get(),
 			"drop_pct": self.drop_entry.get(),
+			"master_switch": self.master_switch_var.get(),
 			"hotkeys": self.bound_keys,
 		}
 		try:
@@ -560,7 +626,7 @@ class AutoclickerApp(ctk.CTk):
 		except OSError:
 			pass
 
-	def load_config(self):
+	def load_config(self) -> None:
 		"""Reads the JSON file and populates the UI."""
 		if not os.path.exists(self.config_file):
 			return
@@ -569,13 +635,14 @@ class AutoclickerApp(ctk.CTk):
 			with open(self.config_file, "r") as f:
 				config = json.load(f)
 
-			def set_entry(entry: ctk.CTkEntry, val: str | float | int):
+			def set_entry(entry: ctk.CTkEntry, val: str | float | int) -> None:
 				entry.delete(0, "end")
 				entry.insert(0, str(val))
 
 			set_entry(self.cps_entry, config.get("cps", "10"))
 			self.button_var.set(config.get("button", "left"))
 			self.mode_var.set(config.get("mode", "toggle"))
+			self.master_switch_var.set(config.get("master_switch", True))
 			self.lock_coords_var.set(config.get("lock_coords", False))
 			set_entry(self.x_entry, config.get("target_x", "0"))
 			set_entry(self.y_entry, config.get("target_y", "0"))
@@ -585,9 +652,9 @@ class AutoclickerApp(ctk.CTk):
 			self.move_drop_var.set(config.get("move_drop", False))
 			self.strict_hotkey_var.set(config.get("strict_hotkey", False))
 
-			self.use_count_var.set(config.get("use_count", False))
-			set_entry(self.limit_count_entry, config.get("click_limit", "100"))
-			self.use_time_var.set(config.get("use_time", False))
+			self.use_count_limit_var.set(config.get("use_count", False))
+			set_entry(self.limit_count_entry, config.get("count_limit", "100"))
+			self.use_time_limit_var.set(config.get("use_time", False))
 			set_entry(self.limit_time_entry, config.get("time_limit", "10"))
 
 			set_entry(self.hum_min_entry, config.get("hum_min", "80"))
@@ -612,14 +679,13 @@ class AutoclickerApp(ctk.CTk):
 		except (OSError, json.JSONDecodeError):
 			pass
 
-	def _on_closing(self):
-		"""Fires when the user clicks the 'X' to close the app."""
+	def _on_closing(self) -> None:
 		self.save_config()
 		self.engine.stop()
 		self.destroy()
 		os._exit(0)
 
-	def _update_ui_loop(self):
+	def _update_ui_loop(self) -> None:
 		if self.status_error:
 			self.status_label.configure(text=self.status_error, text_color="#ff4444")
 		elif self.engine.is_running:
@@ -629,3 +695,37 @@ class AutoclickerApp(ctk.CTk):
 
 		# noinspection PyTypeChecker
 		self.after(100, self._update_ui_loop)
+
+	def _minimize_to_tray(self) -> None:
+		self.withdraw()
+		self._create_tray_icon()
+
+	def _create_tray_icon(self) -> None:
+		icon_path: str = resource_path("icon.ico")
+		try:
+			with warnings.catch_warnings(record=False):
+				warnings.simplefilter("ignore", category=UserWarning)
+				image: Image.Image = Image.open(icon_path)
+		except (FileNotFoundError, OSError):
+			image = Image.new("RGB", (64, 64), color="purple")
+
+		menu = pystray.Menu(
+			pystray.MenuItem("Restore", self._restore_app, default=True),
+			pystray.MenuItem("Exit", self._quit_app),
+		)
+		self.tray_icon = pystray.Icon("WiltClicker", image, "Wilt Clicker", menu)
+		threading.Thread(target=self.tray_icon.run, daemon=True).start()
+
+	def _do_restore(self) -> None:
+		self.deiconify()
+		self.state("normal")
+
+	def _restore_app(self, icon: TrayIcon, _item: object) -> None:
+		icon.stop()
+		# noinspection PyTypeChecker
+		self.after(0, lambda: self._do_restore())
+
+	def _quit_app(self, icon: TrayIcon, _item: object) -> None:
+		icon.stop()
+		# noinspection PyTypeChecker
+		self.after(0, lambda: self._on_closing())

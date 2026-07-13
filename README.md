@@ -55,7 +55,7 @@ You can run Wilt Clicker either by downloading the pre-compiled executable or by
 2. Install the required dependencies:
 
    ```bash
-   pip install customtkinter keyboard
+   pip install .
    ```
 
 3. Run the main application file:

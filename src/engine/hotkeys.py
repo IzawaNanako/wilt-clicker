@@ -9,7 +9,7 @@ from engine.clicker import WiltClicker
 
 
 class HotkeyManager:
-	def __init__(self, clicker_engine: WiltClicker):
+	def __init__(self, clicker_engine: WiltClicker) -> None:
 		self.engine = clicker_engine
 
 		self.main_hotkey = ""
@@ -26,23 +26,24 @@ class HotkeyManager:
 		self.toggle_callbacks: dict[str, Callable[[], None]] = {}
 		self.toggle_hotkeys: dict[str, str] = {}
 
+		self.master_switch = True
+
 		threading.Thread(target=self._monitor_loop, daemon=True).start()
 
-	def set_error_state(self, state: bool):
+	def set_error_state(self, state: bool) -> None:
 		"""Locks the hotkey listener and stops the clicker if bindings are invalid."""
 		self.has_error = state
 		if state:
 			self.engine.stop()
 
-	def update_main_settings(self, hotkey: str, mode: str, ignore_extra: bool):
+	def update_main_settings(self, hotkey: str, mode: str, ignore_extra: bool) -> None:
 		self.main_hotkey = hotkey
 		self.mode = mode
 		self.ignore_extra = ignore_extra
 		self._is_toggled = False
 		self.engine.stop()
 
-	def update_exit_hotkey(self, hotkey: str):
-		"""Safely unbinds the old exit key and binds the new one."""
+	def update_exit_hotkey(self, hotkey: str) -> None:
 		if self.exit_hotkey == hotkey:
 			return
 
@@ -56,7 +57,7 @@ class HotkeyManager:
 		if hotkey:
 			keyboard.add_hotkey(hotkey, self.exit_callback, suppress=False)
 
-	def bind_toggle(self, name: str, hotkey: str, callback: Callable[[], None]):
+	def bind_toggle(self, name: str, hotkey: str, callback: Callable[[], None]) -> None:
 		if self.toggle_hotkeys.get(name) == hotkey:
 			return
 
@@ -89,11 +90,17 @@ class HotkeyManager:
 		except ValueError:
 			return False
 
-	def _monitor_loop(self):
+	def _monitor_loop(self) -> None:
 		while True:
 			time.sleep(0.01)
 
 			if self.has_error:
+				continue
+
+			if not self.master_switch:
+				if self.engine.is_running:
+					self.engine.stop()
+				self._was_pressed = False
 				continue
 
 			currently_pressed = self._is_hotkey_active()

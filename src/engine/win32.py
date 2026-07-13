@@ -32,19 +32,16 @@ GetAsyncKeyState.restype = wintypes.SHORT
 
 
 def get_cursor_pos() -> tuple[int, int]:
-	"""Gets the current absolute screen coordinates of the cursor."""
 	pt = wintypes.POINT()
 	GetCursorPos(ctypes.byref(pt))
 	return pt.x, pt.y
 
 
-def set_cursor_pos(x: int, y: int):
-	"""Instantly forces the cursor to a specific coordinate."""
+def set_cursor_pos(x: int, y: int) -> None:
 	SetCursorPos(x, y)
 
 
-def send_click(button: str = "left"):
-	"""Fires a hardware-level click event instantly."""
+def send_click(button: str = "left") -> None:
 	if button == "left":
 		mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, None)
 		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, None)

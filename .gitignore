@@ -8,4 +8,5 @@ Thumbs.db
 .venv/
 dist/
 build/
+src/wilt_clicker.egg-info/
 wilt-clicker-config.json

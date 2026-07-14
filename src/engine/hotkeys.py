@@ -66,7 +66,7 @@ class HotkeyManager:
 			except KeyError:
 				pass
 
-		def wrapped_callback():
+		def wrapped_callback() -> None:
 			if not self.is_listening:
 				callback()
 

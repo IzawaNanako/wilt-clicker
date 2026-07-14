@@ -20,8 +20,6 @@ SetCurrentProcessExplicitAppUserModelID = getattr(user32, "SetCurrentProcessExpl
 SetCurrentProcessExplicitAppUserModelID.argtypes = [ctypes.c_wchar_p]
 SetCurrentProcessExplicitAppUserModelID.restype = None
 
-
-
 def resource_path(relative_path: str) -> str:
 	base_path = getattr(sys, "_MEIPASS", None)
 
@@ -109,58 +107,108 @@ class AutoclickerApp(ctk.CTk):
 
 	def _build_main_tab(self) -> None:
 		ctrl_frame = ctk.CTkFrame(self.tab_main, fg_color="transparent")
-		ctrl_frame.pack(fill="x", pady=(10, 5), padx=20)
-		inner_ctrl = ctk.CTkFrame(ctrl_frame, fg_color="transparent")
-		inner_ctrl.pack(expand=True)
+		ctrl_frame.pack(fill="x", pady=(10, 5))
+		ctrl_frame.grid_columnconfigure((0, 1, 2, 3, 4, 5), weight=1)
 
-		ctk.CTkLabel(inner_ctrl, text="CPS:", font=("Inter", 14, "bold")).pack(side="left", padx=(0, 5))
-		self.cps_entry = ctk.CTkEntry(inner_ctrl, width=60, justify="center", font=("Inter", 14))
+		cps_group = ctk.CTkFrame(ctrl_frame, fg_color="transparent")
+		cps_group.grid(row=0, column=1, sticky="ns", padx=(70, 0))
+		ctk.CTkLabel(cps_group, text="CPS:", font=("Inter", 14, "bold")).pack(side="left", padx=(0, 5))
+		self.cps_entry = ctk.CTkEntry(cps_group, width=60, justify="center", font=("Inter", 14))
 		self.cps_entry.insert(0, "10")
-		self.cps_entry.pack(side="left", padx=(0, 15))
+		self.cps_entry.pack(side="left")
 		self.cps_entry.bind("<KeyRelease>", self._on_cps_change)
 
-		ctk.CTkLabel(inner_ctrl, text="Delay (ms):", font=("Inter", 14, "bold")).pack(side="left", padx=(0, 5))
-		self.delay_entry = ctk.CTkEntry(inner_ctrl, width=65, justify="center", font=("Inter", 14))
+		delay_group = ctk.CTkFrame(ctrl_frame, fg_color="transparent")
+		delay_group.grid(row=0, column=2, sticky="ns")
+		ctk.CTkLabel(delay_group, text="Delay (ms):", font=("Inter", 14, "bold")).pack(side="left", padx=(0, 5))
+		self.delay_entry = ctk.CTkEntry(delay_group, width=65, justify="center", font=("Inter", 14))
 		self.delay_entry.insert(0, "100")
-		self.delay_entry.pack(side="left", padx=(0, 20))
+		self.delay_entry.pack(side="left")
 		self.delay_entry.bind("<KeyRelease>", self._on_delay_change)
 
+		left_group = ctk.CTkFrame(ctrl_frame, fg_color="transparent")
+		left_group.grid(row=0, column=3, sticky="ns")
 		self.button_var = ctk.StringVar(value="Left")
 		ctk.CTkOptionMenu(
-			inner_ctrl,
+			left_group,
 			values=["Left", "Right", "Middle"],
 			variable=self.button_var,
 			command=lambda val: self._update_settings(),
 			width=90,
 			font=("Inter", 13),
-		).pack(side="left", padx=10)
+		).pack(side="left")
 
+		toggle_group = ctk.CTkFrame(ctrl_frame, fg_color="transparent")
+		toggle_group.grid(row=0, column=4, sticky="ns", padx=(0, 70))
 		self.mode_var = ctk.StringVar(value="Toggle")
 		ctk.CTkOptionMenu(
-			inner_ctrl,
+			toggle_group,
 			values=["Toggle", "Hold"],
 			variable=self.mode_var,
 			command=lambda val: self._update_settings(),
 			width=90,
 			font=("Inter", 13),
-		).pack(side="left", padx=10)
+		).pack(side="left")
 
 		toggles_wrapper = ctk.CTkFrame(self.tab_main, fg_color="transparent")
 		toggles_wrapper.pack(fill="both", expand=True, pady=10)
+
 		toggles_frame = ctk.CTkFrame(toggles_wrapper, fg_color="transparent")
-		toggles_frame.pack(expand=True)
+		toggles_frame.pack(fill="both", expand=True)
+		toggles_frame.grid_columnconfigure((0, 1), weight=1)
+		toggles_frame.grid_rowconfigure(0, weight=1)
+
+		left_col = ctk.CTkFrame(toggles_frame, fg_color="transparent")
+		left_col.grid(row=0, column=0, sticky="ns", padx=(30, 10), pady=5)
 
 		self.lock_coords_var = ctk.BooleanVar(value=False)
 		ctk.CTkCheckBox(
-			toggles_frame,
+			left_col,
 			text="Lock Coords",
 			variable=self.lock_coords_var,
 			command=self._update_settings,
 			font=("Inter", 14, "bold"),
-		).grid(row=0, column=0, sticky="w", pady=(5, 10), padx=20)
+		).pack(anchor="w", expand=True)
 
-		coord_frame = ctk.CTkFrame(toggles_frame, fg_color="transparent")
-		coord_frame.grid(row=0, column=1, sticky="ew", pady=(5, 10), padx=20)  # <-- Added sticky="ew"
+		self.humanize_var = ctk.BooleanVar(value=False)
+		ctk.CTkCheckBox(
+			left_col,
+			text="Humanize (Randomize CPS)",
+			variable=self.humanize_var,
+			command=self._update_settings,
+			font=("Inter", 14),
+		).pack(anchor="w", expand=True)
+
+		self.move_drop_var = ctk.BooleanVar(value=False)
+		ctk.CTkCheckBox(
+			left_col,
+			text="Drop CPS on Mouse Move",
+			variable=self.move_drop_var,
+			command=self._update_settings,
+			font=("Inter", 14),
+		).pack(anchor="w", expand=True)
+
+		count_limit_frame = ctk.CTkFrame(left_col, fg_color="transparent")
+		count_limit_frame.pack(anchor="w", expand=True)
+
+		self.use_count_limit_var = ctk.BooleanVar(value=False)
+		ctk.CTkCheckBox(
+			count_limit_frame,
+			text="Click To:",
+			variable=self.use_count_limit_var,
+			command=self._on_limit_toggle,
+			font=("Inter", 14),
+		).pack(side="left")
+		self.count_limit_entry = ctk.CTkEntry(count_limit_frame, width=60, justify="center", font=("Inter", 14))
+		self.count_limit_entry.insert(0, "100")
+		self.count_limit_entry.pack(side="left", padx=10)
+		self.count_limit_entry.bind("<KeyRelease>", lambda event: self._update_settings())
+
+		right_col = ctk.CTkFrame(toggles_frame, fg_color="transparent")
+		right_col.grid(row=0, column=1, sticky="ns", padx=(10, 30), pady=5)
+
+		coord_frame = ctk.CTkFrame(right_col, fg_color="transparent")
+		coord_frame.pack(fill="x", expand=True)
 
 		ctk.CTkLabel(coord_frame, text="X:", font=("Inter", 14)).pack(side="left")
 		self.x_entry = ctk.CTkEntry(coord_frame, width=60, justify="center", font=("Inter", 14))
@@ -171,7 +219,7 @@ class AutoclickerApp(ctk.CTk):
 		ctk.CTkLabel(coord_frame, text="Y:", font=("Inter", 14)).pack(side="left")
 		self.y_entry = ctk.CTkEntry(coord_frame, width=60, justify="center", font=("Inter", 14))
 		self.y_entry.insert(0, "0")
-		self.y_entry.pack(side="left", padx=5)  # <-- Removed the weird hardcoded space!
+		self.y_entry.pack(side="left", padx=5)
 		self.y_entry.bind("<KeyRelease>", lambda event: self._update_settings())
 
 		self.capture_btn = ctk.CTkButton(
@@ -179,76 +227,43 @@ class AutoclickerApp(ctk.CTk):
 		)
 		self.capture_btn.pack(side="right")
 
-		self.humanize_var = ctk.BooleanVar(value=False)
-		ctk.CTkCheckBox(
-			toggles_frame,
-			text="Humanize (Randomize CPS)",
-			variable=self.humanize_var,
-			command=self._update_settings,
-			font=("Inter", 14),
-		).grid(row=1, column=0, sticky="w", pady=8, padx=20)
-
 		self.jitter_var = ctk.BooleanVar(value=False)
 		ctk.CTkCheckBox(
-			toggles_frame,
+			right_col,
 			text="Cursor Jitter (Shake)",
 			variable=self.jitter_var,
 			command=self._update_settings,
 			font=("Inter", 14),
-		).grid(row=1, column=1, sticky="w", pady=8, padx=20)
-
-		self.move_drop_var = ctk.BooleanVar(value=False)
-		ctk.CTkCheckBox(
-			toggles_frame,
-			text="Drop CPS on Mouse Move",
-			variable=self.move_drop_var,
-			command=self._update_settings,
-			font=("Inter", 14),
-		).grid(row=2, column=0, sticky="w", pady=8, padx=20)
+		).pack(anchor="w", expand=True)
 
 		self.strict_hotkey_var = ctk.BooleanVar(value=False)
 		ctk.CTkCheckBox(
-			toggles_frame,
+			right_col,
 			text="Loose Hotkey Matching",
 			variable=self.strict_hotkey_var,
 			command=self._update_settings,
 			font=("Inter", 14),
-		).grid(row=2, column=1, sticky="w", pady=8, padx=20)
+		).pack(anchor="w", expand=True)
 
-		count_frame = ctk.CTkFrame(toggles_frame, fg_color="transparent")
-		count_frame.grid(row=3, column=0, sticky="w", pady=8, padx=20)
-
-		self.use_count_limit_var = ctk.BooleanVar(value=False)
-		ctk.CTkCheckBox(
-			count_frame,
-			text="Click To:",
-			variable=self.use_count_limit_var,
-			command=self._on_limit_toggle,
-			font=("Inter", 14),
-		).pack(side="left")
-		self.count_limit_entry = ctk.CTkEntry(count_frame, width=60, justify="center", font=("Inter", 14))
-		self.count_limit_entry.insert(0, "100")
-		self.count_limit_entry.pack(side="left", padx=10)
-		self.count_limit_entry.bind("<KeyRelease>", lambda event: self._update_settings())
-
-		time_frame = ctk.CTkFrame(toggles_frame, fg_color="transparent")
-		time_frame.grid(row=3, column=1, sticky="ew", pady=8, padx=20)  # <-- Added sticky="ew"
+		time_limit_frame = ctk.CTkFrame(right_col, fg_color="transparent")
+		time_limit_frame.pack(fill="x", expand=True)
 
 		self.use_time_limit_var = ctk.BooleanVar(value=False)
 		ctk.CTkCheckBox(
-			time_frame,
+			time_limit_frame,
 			text="Click For (Secs):",
 			variable=self.use_time_limit_var,
 			command=self._on_limit_toggle,
 			font=("Inter", 14),
 		).pack(side="left")
-		self.time_limit_entry = ctk.CTkEntry(time_frame, width=60, justify="center", font=("Inter", 14))
+		self.time_limit_entry = ctk.CTkEntry(time_limit_frame, width=60, justify="center", font=("Inter", 14))
 		self.time_limit_entry.insert(0, "10")
 		self.time_limit_entry.pack(side="right")
 		self.time_limit_entry.bind("<KeyRelease>", lambda event: self._update_settings())
 
 		bottom_actions = ctk.CTkFrame(self.tab_main, fg_color="transparent")
-		bottom_actions.pack(side="bottom", pady=(5, 10))
+		bottom_actions.pack(side="bottom", fill="x", pady=(5, 10))
+		bottom_actions.grid_columnconfigure((0, 1), weight=1)
 
 		self.master_switch_var = ctk.BooleanVar(value=True)
 		ctk.CTkSwitch(
@@ -257,7 +272,7 @@ class AutoclickerApp(ctk.CTk):
 			variable=self.master_switch_var,
 			command=self._update_settings,
 			font=("Inter", 14, "bold"),
-		).pack(side="left", padx=20)
+		).grid(row=0, column=0, sticky="ns", padx=(170, 0))
 
 		ctk.CTkButton(
 			bottom_actions,
@@ -266,7 +281,7 @@ class AutoclickerApp(ctk.CTk):
 			command=self._minimize_to_tray,
 			fg_color="#4a4a4a",
 			hover_color="#3a3a3a",
-		).pack(side="left", padx=20)
+		).grid(row=0, column=1, sticky="ns", padx=(0, 170))
 
 	def _on_cps_change(self, _event: object) -> None:
 		"""Fires when the user types in the CPS box, updates the Delay box."""
@@ -444,7 +459,7 @@ class AutoclickerApp(ctk.CTk):
 		esc_k = self.bound_keys["escape"]
 		toggle_keys = [
 			self.bound_keys[k]
-			for k in ["humanize", "jitter", "move_drop", "lock", "count_limit", "time_limit", "master_switch"]
+			for k in ["humanize", "jitter", "move_drop", "lock", "count_limit", "time_limit", "master_switch", "minimize_tray"]
 			if self.bound_keys[k]
 		]
 

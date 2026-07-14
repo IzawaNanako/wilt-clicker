@@ -73,13 +73,13 @@ If you wish to compile the executable yourself from the source code, you can do 
 1. Ensure PyInstaller is installed:
 
    ```bash
-   pip install pyinstaller
+   python -m pip install pyinstaller
    ```
 
 2. Run the following command in the root directory:
 
    ```bash
-   pyinstaller WiltClicker.spec --clean
+   python -m PyInstaller WiltClicker.spec --clean
    ```
 
 The compiled .exe will be located in the generated dist/ folder.

@@ -13,6 +13,8 @@ Wilt Clicker is an advanced automation tool designed to handle repetitive clicki
 - **Movement Drops:** Automatically lower the CPS rate when physical mouse movement is detected.
 - **Click Limits:** Automatically stop clicking after a specific amount of time has passed or a certain number of clicks has been reached.
 - **Coordinate Clicking:** Lock the autoclicker to a specific set of screen coordinates.
+- **Global Master Switch:** Turn main clicker triggering off at will.
+- **Hide Window:** Minimize the application to the system tray.
 - **Customizable Hotkeys:** Bind feature toggles to any preferred key.
 
 ## Tech Stack

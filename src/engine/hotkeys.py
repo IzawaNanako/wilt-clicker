@@ -108,13 +108,17 @@ class HotkeyManager:
 			if self.mode == "hold":
 				if currently_pressed and not self.engine.is_running:
 					self.engine.start()
-				elif not currently_pressed and self.engine.is_running:
+				if not currently_pressed and self.engine.is_running:
 					self.engine.stop()
-			elif self.mode == "toggle":
-				if currently_pressed and not self._was_pressed:
-					self._is_toggled = not self._is_toggled
-					if self._is_toggled:
-						self.engine.start()
-					else:
-						self.engine.stop()
+				self._was_pressed = currently_pressed
+				continue
+
+			if self.mode == "toggle" and currently_pressed and not self._was_pressed:
+				self._is_toggled = not self._is_toggled
+
+				if self._is_toggled:
+					self.engine.start()
+				if not self._is_toggled:
+					self.engine.stop()
+
 			self._was_pressed = currently_pressed

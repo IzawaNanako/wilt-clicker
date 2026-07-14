@@ -89,34 +89,38 @@ class WiltClicker:
 
 		while self.is_running:
 			current_time = time.perf_counter()
-			if current_time >= next_click:
-				if self.use_time_limit and (current_time - self.start_time) >= self.time_limit:
-					self.stop()
-					break
 
-				if self.use_count_limit and clicks_done >= self.count_limit:
-					self.stop()
-					break
+			if current_time < next_click:
+				continue
 
-				if self.lock_coords:
-					set_cursor_pos(self.target_x, self.target_y)
-				if self.jitter:
-					cx, cy = get_cursor_pos()
-					set_cursor_pos(cx + random.randint(-2, 2), cy + random.randint(-2, 2))
+			if self.use_time_limit and (current_time - self.start_time) >= self.time_limit:
+				self.stop()
+				break
 
-				send_click(self.button)
-				clicks_done += 1
+			if self.use_count_limit and clicks_done >= self.count_limit:
+				self.stop()
+				break
 
-				current_pos = get_cursor_pos()
-				active_cps = self.cps
-				if self.move_drop and current_pos != last_pos:
-					active_cps = max(1.0, self.cps * (1.0 - self.drop_pct))
-				last_pos = current_pos
+			if self.lock_coords:
+				set_cursor_pos(self.target_x, self.target_y)
 
-				base_delay = 1.0 / active_cps
-				if self.humanize:
-					delay = base_delay * random.uniform(self.hum_min, self.hum_max)
-				else:
-					delay = base_delay
+			if self.jitter:
+				cx, cy = get_cursor_pos()
+				set_cursor_pos(cx + random.randint(-2, 2), cy + random.randint(-2, 2))
 
-				next_click = current_time + delay
+			send_click(self.button)
+			clicks_done += 1
+
+			current_pos = get_cursor_pos()
+			active_cps = self.cps
+
+			if self.move_drop and current_pos != last_pos:
+				active_cps = max(1.0, self.cps * (1.0 - self.drop_pct))
+
+			last_pos = current_pos
+
+			delay = 1.0 / active_cps
+			if self.humanize:
+				delay *= random.uniform(self.hum_min, self.hum_max)
+
+			next_click = current_time + delay

@@ -20,6 +20,7 @@ SetCurrentProcessExplicitAppUserModelID = getattr(user32, "SetCurrentProcessExpl
 SetCurrentProcessExplicitAppUserModelID.argtypes = [ctypes.c_wchar_p]
 SetCurrentProcessExplicitAppUserModelID.restype = None
 
+
 def resource_path(relative_path: str) -> str:
 	base_path = getattr(sys, "_MEIPASS", None)
 
@@ -49,7 +50,7 @@ class AutoclickerApp(ctk.CTk):
 		self.title("Wilt Clicker")
 		self.geometry("750x450")
 		try:
-			app_id: str = "wither.wiltclicker.main.1.0"
+			app_id: str = "wither.wiltclicker.main.1.1"
 			SetCurrentProcessExplicitAppUserModelID(app_id)
 			self.iconbitmap(resource_path("icon.ico"))
 		except (AttributeError, OSError):
@@ -310,7 +311,7 @@ class AutoclickerApp(ctk.CTk):
 	def _on_limit_toggle(self) -> None:
 		if self.use_count_limit_var.get():
 			self.use_time_limit_var.set(False)
-		elif self.use_time_limit_var.get():
+		if self.use_time_limit_var.get():
 			self.use_count_limit_var.set(False)
 		self._update_settings()
 
@@ -459,7 +460,16 @@ class AutoclickerApp(ctk.CTk):
 		esc_k = self.bound_keys["escape"]
 		toggle_keys = [
 			self.bound_keys[k]
-			for k in ["humanize", "jitter", "move_drop", "lock", "count_limit", "time_limit", "master_switch", "minimize_tray"]
+			for k in [
+				"humanize",
+				"jitter",
+				"move_drop",
+				"lock",
+				"count_limit",
+				"time_limit",
+				"master_switch",
+				"minimize_tray",
+			]
 			if self.bound_keys[k]
 		]
 
@@ -551,10 +561,12 @@ class AutoclickerApp(ctk.CTk):
 			self.use_count_limit_var.set(not self.use_count_limit_var.get())
 			if self.use_count_limit_var.get():
 				self.use_time_limit_var.set(False)
-		else:
-			self.use_time_limit_var.set(not self.use_time_limit_var.get())
-			if self.use_time_limit_var.get():
-				self.use_count_limit_var.set(False)
+			self._update_settings()
+			return
+
+		self.use_time_limit_var.set(not self.use_time_limit_var.get())
+		if self.use_time_limit_var.get():
+			self.use_count_limit_var.set(False)
 		self._update_settings()
 
 	def _listen_for_hotkey(self, bind_name: str) -> None:
@@ -565,18 +577,17 @@ class AutoclickerApp(ctk.CTk):
 			key = keyboard.read_hotkey(suppress=False)
 
 			if key == "esc":
-				if bind_name == "escape":
-					key = "ctrl+shift+comma"
-				else:
-					key = ""
+				key = "ctrl+shift+comma" if bind_name == "escape" else ""
 
 			self.bound_keys[bind_name] = key
 			display_text = f"[{key.upper()}]" if key else "Unbound"
+
 			if bind_name == "escape":
 				btn.configure(text=display_text, fg_color="#a83232")
-			else:
-				btn.configure(text=display_text, fg_color="#600080" if key else "#4a4a4a")
+				self._update_settings()
+				return
 
+			btn.configure(text=display_text, fg_color="#600080" if key else "#4a4a4a")
 			self._update_settings()
 
 		threading.Thread(target=listener, daemon=True).start()
@@ -676,16 +687,20 @@ class AutoclickerApp(ctk.CTk):
 
 			saved_keys = config.get("hotkeys", {})
 			for k, v in saved_keys.items():
-				if k in self.bound_keys:
-					self.bound_keys[k] = v
-					btn = self.hotkey_btns.get(k)
-					if btn:
-						if k == "escape":
-							btn.configure(text=f"[{v.upper()}]", fg_color="#a83232")
-						else:
-							btn.configure(
-								text=f"[{v.upper()}]" if v else "Unbound", fg_color="#600080" if v else "#4a4a4a"
-							)
+				if k not in self.bound_keys:
+					continue
+
+				self.bound_keys[k] = v
+				btn = self.hotkey_btns.get(k)
+
+				if not btn:
+					continue
+
+				if k == "escape":
+					btn.configure(text=f"[{v.upper()}]", fg_color="#a83232")
+					continue
+
+				btn.configure(text=f"[{v.upper()}]" if v else "Unbound", fg_color="#600080" if v else "#4a4a4a")
 
 			self._on_cps_change(None)
 
@@ -699,12 +714,15 @@ class AutoclickerApp(ctk.CTk):
 		os._exit(0)
 
 	def _update_ui_loop(self) -> None:
+		text, color = "Status: Idle", "gray"
+
+		if self.engine.is_running:
+			text, color = "Status: CLICKING", "green"
+
 		if self.status_error:
-			self.status_label.configure(text=self.status_error, text_color="#ff4444")
-		elif self.engine.is_running:
-			self.status_label.configure(text="Status: CLICKING", text_color="green")
-		else:
-			self.status_label.configure(text="Status: Idle", text_color="gray")
+			text, color = self.status_error, "#ff4444"
+
+		self.status_label.configure(text=text, text_color=color)
 
 		# noinspection PyTypeChecker
 		self.after(100, self._update_ui_loop)

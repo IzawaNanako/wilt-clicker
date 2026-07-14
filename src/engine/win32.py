@@ -45,6 +45,8 @@ def send_click(button: str = "left") -> None:
 	if button == "left":
 		mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, None)
 		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, None)
-	elif button == "right":
+		return
+
+	if button == "right":
 		mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, None)
 		mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, None)

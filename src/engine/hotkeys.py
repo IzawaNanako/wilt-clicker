@@ -17,16 +17,15 @@ class HotkeyManager:
 		self.ignore_extra = False
 		self._is_toggled = False
 		self._was_pressed = False
-
 		self.has_error = False
+		self.master_switch = True
+		self.is_listening = False
 
 		self.exit_hotkey = ""
-		self.exit_callback: Callable[[], None] = lambda: os._exit(0)
+		self.exit_callback: Callable[[], None] = lambda: os._exit(0) if not self.is_listening else None
 
 		self.toggle_callbacks: dict[str, Callable[[], None]] = {}
 		self.toggle_hotkeys: dict[str, str] = {}
-
-		self.master_switch = True
 
 		threading.Thread(target=self._monitor_loop, daemon=True).start()
 
@@ -67,11 +66,15 @@ class HotkeyManager:
 			except KeyError:
 				pass
 
+		def wrapped_callback():
+			if not self.is_listening:
+				callback()
+
 		self.toggle_hotkeys[name] = hotkey
-		self.toggle_callbacks[name] = callback
+		self.toggle_callbacks[name] = wrapped_callback
 
 		if hotkey:
-			keyboard.add_hotkey(hotkey, callback, suppress=False)
+			keyboard.add_hotkey(hotkey, wrapped_callback, suppress=False)
 
 	def _is_hotkey_active(self) -> bool:
 		if not self.main_hotkey:
@@ -94,7 +97,7 @@ class HotkeyManager:
 		while True:
 			time.sleep(0.01)
 
-			if self.has_error:
+			if self.has_error or self.is_listening:
 				continue
 
 			if not self.master_switch:

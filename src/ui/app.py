@@ -50,7 +50,7 @@ class AutoclickerApp(ctk.CTk):
 		self.title("Wilt Clicker")
 		self.geometry("750x450")
 		try:
-			app_id: str = "wither.wiltclicker.main.1.1"
+			app_id: str = "wither.wiltclicker.main.1.1.1"
 			SetCurrentProcessExplicitAppUserModelID(app_id)
 			self.iconbitmap(resource_path("icon.ico"))
 		except (AttributeError, OSError):

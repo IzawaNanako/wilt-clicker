@@ -68,13 +68,19 @@ You can run Wilt Clicker either by downloading the pre-compiled executable or by
 
 ### Building the Executable
 
-If you wish to compile the executable yourself from the source code, you can do so using PyInstaller and the provided specification file. Ensure PyInstaller is installed (pip install pyinstaller).
+If you wish to compile the executable yourself from the source code, you can do so using PyInstaller and the provided specification file.
 
-Run the following command in the root directory:
+1. Ensure PyInstaller is installed:
 
-```bash
-pyinstaller WiltClicker.spec --clean
-```
+   ```bash
+   pip install pyinstaller
+   ```
+
+2. Run the following command in the root directory:
+
+   ```bash
+   pyinstaller WiltClicker.spec --clean
+   ```
 
 The compiled .exe will be located in the generated dist/ folder.
 
